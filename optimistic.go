@@ -100,7 +100,6 @@ func (g optimisticLock) afterUpdate(tx *gorm.DB) {
 	)
 	if ctxValueRaw, cvok := tx.InstanceGet(contextKey); cvok {
 		ctxValue = ctxValueRaw.(*contextValue)
-		slog.With("ctxValue", ctxValue).Debug("ctxValue")
 	}
 	if ctxValue == nil {
 		return
