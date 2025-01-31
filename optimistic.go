@@ -153,7 +153,9 @@ func (g optimisticLock) afterUpdate(tx *gorm.DB) {
 			toValue,
 			opts...,
 		) {
-			slog.With("diff", reporter.Diff()).Debug("differences detected")
+			if tx.Statement != nil && tx.Statement.Context != nil {
+				slog.With("diff", reporter.Diff()).Log(tx.Statement.Context, slog.Level(-8), "differences detected")
+			}
 		}
 	}
 

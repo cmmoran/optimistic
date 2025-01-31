@@ -28,6 +28,7 @@ type TestModel struct {
 	ID          uint64             `gorm:"<-:create;column:id;primaryKey"`
 	Description string             `gorm:"column:description"`
 	Code        uint64             `gorm:"column:code"`
+	Enabled     bool               `gorm:"column:enabled"`
 	Version     optimistic.Version `gorm:"column:version"`
 }
 
@@ -35,6 +36,7 @@ type TestModelNoVersion struct {
 	ID          uint64 `gorm:"<-:create;column:id;primaryKey"`
 	Description string `gorm:"column:description"`
 	Code        uint64 `gorm:"column:code"`
+	Enabled     bool   `gorm:"column:enabled"`
 }
 
 type ow struct{}
@@ -96,10 +98,24 @@ func TestConcurrentUpdate(t *testing.T) {
 	assert.NoError(t, result.Error, "expecting no error when fetching the concurrent record")
 
 	testModel.Description = "Updated Test"
+	testModel.Enabled = true
 	result = db.Updates(testModel)
 	assert.NoError(t, result.Error, "expecting no error when updating test record")
 	assert.EqualValues(t, 2, testModel.Version, "expecting version to be 2")
 	assert.EqualValues(t, "Updated Test", testModel.Description, "expecting description to be updated")
+	assert.True(t, testModel.Enabled, "expecting enabled to be true")
+
+	testModel.Enabled = false
+	result = db.Updates(testModel)
+	assert.NoError(t, result.Error, "expecting no error when updating test record")
+	assert.EqualValues(t, 3, testModel.Version, "expecting version to be 3")
+	assert.True(t, testModel.Enabled, "expecting enabled to be true because 'false' is a zero value and unless Select'ed will be ignored")
+
+	testModel.Enabled = false
+	result = db.Select("Enabled").Updates(testModel)
+	assert.NoError(t, result.Error, "expecting no error when updating test record")
+	assert.EqualValues(t, 4, testModel.Version, "expecting version to be 2")
+	assert.False(t, testModel.Enabled, "expecting enabled to be false")
 
 	// Simulate a concurrent update
 	concurrentModel.Description = "Concurrent Test"
