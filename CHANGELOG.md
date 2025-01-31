@@ -1,3 +1,12 @@
+## [0.2.2](https://github.com/cmmoran/optimistic/compare/v0.2.1...v0.2.2) (2025-01-31)
+
+
+### Bug Fixes
+
+* **optimistic:** silenced spammy "differences detected" logging behind slog.Level = -8 ([1c7f398](https://github.com/cmmoran/optimistic/commit/1c7f398dc210d7629d615ec3a0f850dff074bae5))
+
+
+
 ## [0.2.1](https://github.com/cmmoran/optimistic/compare/v0.2.0...v0.2.1) (2025-01-13)
 
 
