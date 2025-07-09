@@ -1,186 +1,285 @@
 package optimistic
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"gorm.io/gorm"
-	"gorm.io/gorm/schema"
-	"log/slog"
+	"gorm.io/gorm/clause"
 	"reflect"
 )
 
 const (
 	afterUpdateCallbackTarget = "gorm:after_update"
 	contextKey                = "optimistic_lock:context_key"
+	conflictClauseName        = "optimistic:conflict"
 )
 
-var ErrOptimisticLock = errors.New("db record version mismatch")
+var (
+	TestDatabase      string
+	ErrOptimisticLock = errors.New("db record version mismatch")
+)
 
-type options struct {
-	versionFieldName string
-	disabled         bool
-}
-type Option interface {
-	apply(*options)
-}
-type funcOption struct {
-	f func(*options)
-}
-
-func (fdo *funcOption) apply(do *options) {
-	fdo.f(do)
-}
-
-func newFuncOption(f func(*options)) *funcOption {
-	return &funcOption{
-		f: f,
-	}
-}
-
-// VersionFieldName sets the version field name in the options configuration using the provided string value.
+// Conflict lets you resolve a version‐mismatch by returning:
 //
-// Default value: `Version`
-func VersionFieldName(versionFieldName string) Option {
-	return newFuncOption(func(do *options) {
-		do.versionFieldName = versionFieldName
-	})
+//	– nil       → cancel the update
+//	– *Model    → re-run Updates(...) on that model
+type Conflict struct {
+	OnVersionMismatch func(current any, diff map[string]Change) any
 }
 
-// Disabled disables optimstic locking
-func Disabled() Option {
-	return newFuncOption(func(do *options) {
-		do.disabled = true
-	})
-}
+func (x Conflict) MergeClause(c *clause.Clause) {
+	if existing, ok := c.Expression.(Conflict); ok {
+		// If both have OnVersionMismatch, chain them
+		if existing.OnVersionMismatch != nil && x.OnVersionMismatch != nil {
+			chained := func(current any, diff map[string]Change) any {
+				interim := existing.OnVersionMismatch(current, diff)
+				reporter := newDiffReporter()
+				opts := []cmp.Option{
+					//cmpopts.IgnoreFields(tx.Statement.ReflectValue.Interface(), "Version"),
+					cmp.Reporter(reporter),
+				}
+				if !cmp.Equal(
+					current,
+					interim,
+					opts...,
+				) {
+					return x.OnVersionMismatch(interim, reporter.Diff())
+				}
+				return x.OnVersionMismatch(interim, diff)
+			}
+			c.Expression = Conflict{OnVersionMismatch: chained}
+			return
+		}
 
-// OptimisticLock plugin
-type optimisticLock struct {
-	*options
-}
-
-func NewOptimisticLock(opts ...Option) gorm.Plugin {
-	ol := &options{}
-	for _, o := range opts {
-		o.apply(ol)
+		// Only existing has a handler
+		if existing.OnVersionMismatch != nil {
+			c.Expression = existing
+			return
+		}
 	}
-	if ol.versionFieldName == "" {
-		ol.versionFieldName = "Version"
-	}
 
-	return &optimisticLock{
-		ol,
-	}
+	// Fall back to receiver
+	c.Expression = x
 }
 
-// Name returns the plugin name
-func (g optimisticLock) Name() string {
+func (Conflict) Name() string { return conflictClauseName }
+func (x Conflict) Build(clause.Builder) {
+}
+
+// Plugin implements gorm.Plugin and wires up callbacks.
+type Plugin struct{}
+
+func (*Plugin) Name() string {
 	return "optimistic_lock"
 }
 
-// Initialize registers the plugin with GORM
-func (g optimisticLock) Initialize(db *gorm.DB) error {
-	if g.disabled {
-		return nil
+func checkVersionField(db *gorm.DB, v reflect.Value, fieldName string) {
+	if !v.IsValid() || v.Kind() != reflect.Struct {
+		_ = db.AddError(ErrOptimisticLock)
+		return
 	}
-	return errors.Join(
-		db.Callback().Update().After(afterUpdateCallbackTarget).Register(fmt.Sprintf("%s:%s", g.Name(), afterUpdateCallbackTarget), g.afterUpdate),
-	)
+	field := v.FieldByName(fieldName)
+	if !field.IsValid() || field.Kind() != reflect.Uint64 {
+		_ = db.AddError(ErrOptimisticLock)
+		return
+	}
+	if field.Uint() != 1 {
+		_ = db.AddError(ErrOptimisticLock)
+	}
 }
 
-func (g optimisticLock) afterUpdate(tx *gorm.DB) {
-	// Check if the statement and schema are valid
-	if g.disabled || tx.Statement == nil || tx.Statement.Schema == nil || tx.DryRun {
-		return
-	}
-	var (
-		stmt                          = tx.Statement
-		primaryKeyField, versionField *schema.Field
-		ctxValue                      *contextValue
-	)
-	if ctxValueRaw, cvok := tx.InstanceGet(contextKey); cvok {
-		ctxValue = ctxValueRaw.(*contextValue)
-	}
-	if ctxValue == nil {
-		return
-	}
+func (p *Plugin) Initialize(idb *gorm.DB) error {
+	//
+	// AFTER CREATE: initial version must be 1
+	//
+	_ = idb.Callback().
+		Create().
+		After("gorm:after_create").
+		Register("optimistic:verify_create", func(db *gorm.DB) {
+			stmt := db.Statement
 
-	primaryKeyField, versionField = ctxValue.PrimaryKeyField, ctxValue.VersionField
-
-	var (
-		toValue, fromValue     any
-		toVersion, fromVersion Version
-	)
-	toValue = stmt.ReflectValue.Interface()
-	if cv, zero := versionField.ValueOf(tx.Statement.Context, stmt.ReflectValue); zero {
-		toVersion = 0
-	} else {
-		toVersion = cv.(Version)
-	}
-
-	from := reflect.ValueOf(ctxValue.Current)
-	fromValue = from.Interface()
-
-	if tx.RowsAffected == 0 && toVersion > 0 {
-		from = reflect.New(stmt.ReflectValue.Type())
-		var nLastValue any
-		if from.CanAddr() {
-			nLastValue = from.Addr().Interface()
-		} else {
-			nLastValue = from.Interface()
-		}
-		err := tx.Session(&gorm.Session{
-			NewDB: true,
-		}).Model(nLastValue).Where(fmt.Sprintf("%s = ?", primaryKeyField.DBName), ctxValue.PrimaryKey).First(nLastValue).Error
-		if err != nil {
-			_ = tx.AddError(ErrOptimisticLock)
-			return
-		}
-		if from.CanAddr() {
-			fromValue = from.Addr().Interface()
-		} else {
-			fromValue = from.Elem().Interface()
-		}
-	} else {
-		// Diff the fields for debugging
-		reporter := newDiffReporter()
-		opts := []cmp.Option{
-			//cmpopts.IgnoreFields(tx.Statement.ReflectValue.Interface(), "Version"),
-			cmp.Reporter(reporter),
-		}
-		if !cmp.Equal(
-			fromValue,
-			toValue,
-			opts...,
-		) {
-			if tx.Statement != nil && tx.Statement.Context != nil {
-				slog.With("diff", reporter.Diff()).Log(tx.Statement.Context, slog.Level(-8), "differences detected")
+			if db.DryRun || stmt.Unscoped {
+				return
 			}
-		}
-	}
-
-	if fv, isZero := versionField.ValueOf(tx.Statement.Context, from); isZero {
-		fromVersion = 1
-	} else {
-		fromVersion = fv.(Version)
-	}
-
-	// Ensure the version has been increased
-	if tx.RowsAffected == 0 {
-		if fromVersion == toVersion {
-			slog.With("fromVersion", fromVersion, "toVersion", toVersion).Debug("zero values")
-			return
-		} else if toVersion < fromVersion {
-			slog.With("fromVersion", fromVersion, "toVersion", toVersion).Debug("stale")
-			if !stmt.Unscoped {
-				_ = tx.AddError(ErrOptimisticLock)
+			if _, ok := stmt.Clauses[optimisticLockingEnabled{}.Name()]; !ok {
+				return
 			}
-			return
-		}
-	} else if toVersion != fromVersion+1 {
-		if !stmt.Unscoped {
-			slog.With("fromVersion", fromVersion, "toVersion", toVersion, "unscoped", stmt.Unscoped).Debug("unexpected fromVersion")
-			_ = tx.AddError(ErrOptimisticLock)
-		}
+			f := findVersionField(stmt.Schema)
+			if f == nil {
+				return
+			}
+
+			destVal := reflect.ValueOf(stmt.Dest)
+			if destVal.Kind() == reflect.Pointer {
+				destVal = destVal.Elem()
+			}
+
+			// Handle slice or single struct
+			switch destVal.Kind() {
+			case reflect.Struct:
+				// Singular
+				checkVersionField(db, destVal, f.Name)
+
+			case reflect.Slice:
+				// Batch
+				for i := 0; i < destVal.Len(); i++ {
+					elem := destVal.Index(i)
+					if elem.Kind() == reflect.Pointer {
+						elem = elem.Elem()
+					}
+					checkVersionField(db, elem, f.Name)
+				}
+
+			default:
+				_ = db.AddError(fmt.Errorf("optimistic locking: unsupported Dest kind: %s", destVal.Kind()))
+			}
+		})
+
+	//
+	// AFTER UPDATE: verify version bumped by exactly +1
+	//
+	_ = idb.Callback().
+		Update().
+		After(afterUpdateCallbackTarget).
+		Register("optimistic:verify_update", func(db *gorm.DB) {
+			if db.DryRun || db.Statement.Unscoped {
+				return
+			}
+			stmt := db.Statement
+			if _, ok := stmt.Clauses[optimisticLockingEnabled{}.Name()]; !ok {
+				return
+			}
+
+			f := findVersionField(stmt.Schema)
+			if f == nil {
+				return
+			}
+			oldAny, _ := db.InstanceGet(contextKey)
+			oldVer, _ := oldAny.(Version)
+			newAny, _ := f.ValueOf(stmt.Context, stmt.ReflectValue)
+			newVer, _ := newAny.(Version)
+			if newVer != oldVer+1 {
+				_ = db.AddError(ErrOptimisticLock)
+			}
+		})
+
+	//
+	// AFTER UPDATE: if we got ErrOptimisticLock *and* the user attached a Conflict clause,
+	// load the current row, call OnVersionMismatch, then either cancel or retry.
+	//
+	_ = idb.Callback().
+		Update().
+		After(afterUpdateCallbackTarget).
+		Register("optimistic:resolve_conflict", func(db *gorm.DB) {
+			if db.DryRun || db.Statement.Unscoped {
+				return
+			}
+			stmt := db.Statement
+
+			// only proceed if user did db.Clauses(optimistic.Conflict{…})
+			cClause, ok := stmt.Clauses[conflictClauseName]
+			if !ok {
+				return
+			}
+			conflict := cClause.Expression.(Conflict)
+
+			// only handle the version-mismatch error
+			if !errors.Is(db.Error, ErrOptimisticLock) {
+				return
+			}
+
+			// load fresh record by primary key(s)
+			current := reflect.New(stmt.Schema.ModelType).Interface()
+			for _, pf := range stmt.Schema.PrimaryFields {
+				i := pf.ReflectValueOf(stmt.Context, stmt.ReflectValue).Interface()
+				rv := reflect.Indirect(reflect.ValueOf(current))
+				_ = pf.Set(stmt.Context, rv, i)
+			}
+			fresh := db.WithContext(context.Background()).Session(&gorm.Session{NewDB: true, SkipHooks: true})
+			fresh.Error = nil
+			fresh.RowsAffected = 0
+			loadErr := fresh.First(current).Error
+			if loadErr != nil {
+				return
+			}
+
+			// let user resolve or cancel
+			reporter := newDiffReporter()
+			cmp.Diff(stmt.ReflectValue.Interface(), current, cmp.Reporter(reporter))
+			rv := anyDeref(current)
+			ptr := anyRef(rv)
+			resolved := conflict.OnVersionMismatch(current, reporter.Diff())
+			current = ptr
+
+			if resolved == nil { // Error optimistic.ErrOptimisticLock
+				db.Logger.Warn(db.Statement.Context, "[%s] ignored version mismatch, cancelled update, no rows affected", p.Name())
+				db.RowsAffected = 0
+			} else if cmp.Equal(current, resolved, cmp.Reporter(reporter.Reset())) { // Error optimistic.ErrOptimisticLock
+				db.Logger.Warn(db.Statement.Context, "[%s] ignored version mismatch, accepted current value, no rows affected", p.Name())
+				db.RowsAffected = 0
+				reflect.Indirect(reflect.ValueOf(stmt.Model)).Set(reflect.Indirect(reflect.ValueOf(current)))
+			} else { // Error is propagated from the update attempt
+				// retry update with the resolved object
+				retry := fresh.Session(&gorm.Session{NewDB: true, Logger: nil}).
+					Model(resolved).
+					Updates(resolved)
+				reflect.Indirect(reflect.ValueOf(stmt.Model)).Set(reflect.Indirect(reflect.ValueOf(resolved)))
+				db.Error = retry.Error
+				db.RowsAffected = retry.RowsAffected
+			}
+		})
+
+	return nil
+}
+
+func anyDeref(obj any) any {
+	if obj == nil {
+		return nil
 	}
+
+	v := reflect.ValueOf(obj)
+
+	// Unwrap interfaces and pointers
+	for v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
+		if v.IsNil() {
+			return nil
+		}
+		v = v.Elem()
+	}
+
+	return v.Interface()
+}
+
+func anyRef(obj any, wrapPointers ...bool) any {
+	if obj == nil {
+		return nil
+	}
+
+	v := reflect.ValueOf(obj)
+
+	// Unwrap interfaces
+	for v.Kind() == reflect.Interface && !v.IsNil() {
+		v = v.Elem()
+	}
+
+	// Decide whether to wrap pointers or not
+	if v.Kind() == reflect.Ptr {
+		if len(wrapPointers) == 0 || !wrapPointers[0] {
+			return obj // Leave pointer as-is
+		}
+		// wrapPointers[0] is true → wrap pointer again
+	}
+
+	// Create a new pointer to the value
+	ptrVal := reflect.New(v.Type())
+	ptrVal.Elem().Set(v)
+
+	return ptrVal.Interface()
+}
+
+// NewOptimisticLock returns the plugin for db.Use(...)
+func NewOptimisticLock() gorm.Plugin {
+	return &Plugin{}
 }
