@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"reflect"
+	"slices"
 )
 
 const (
@@ -17,7 +18,6 @@ const (
 )
 
 var (
-	TestDatabase      string
 	ErrOptimisticLock = errors.New("db record version mismatch")
 )
 
@@ -91,6 +91,7 @@ func checkVersionField(db *gorm.DB, v reflect.Value, fieldName string) {
 }
 
 func (p *Plugin) Initialize(idb *gorm.DB) error {
+	supportsReturning := slices.Contains(idb.Callback().Update().Clauses, "RETURNING")
 	//
 	// AFTER CREATE: initial version must be 1
 	//
@@ -158,10 +159,32 @@ func (p *Plugin) Initialize(idb *gorm.DB) error {
 			}
 			oldAny, _ := db.InstanceGet(contextKey)
 			oldVer, _ := oldAny.(Version)
-			newAny, _ := f.ValueOf(stmt.Context, stmt.ReflectValue)
-			newVer, _ := newAny.(Version)
-			if newVer != oldVer+1 {
-				_ = db.AddError(ErrOptimisticLock)
+			if supportsReturning {
+				newAny, _ := f.ValueOf(stmt.Context, stmt.ReflectValue)
+				newVer, _ := newAny.(Version)
+				if newVer != oldVer+1 {
+					_ = db.AddError(ErrOptimisticLock)
+				}
+			} else {
+				if db.RowsAffected == 0 {
+					_ = db.AddError(ErrOptimisticLock)
+				} else {
+					current := reflect.New(stmt.Schema.ModelType).Interface()
+					for _, pf := range stmt.Schema.PrimaryFields {
+						i := pf.ReflectValueOf(stmt.Context, stmt.ReflectValue).Interface()
+						rv := reflect.Indirect(reflect.ValueOf(current))
+						_ = pf.Set(stmt.Context, rv, i)
+					}
+					fresh := db.WithContext(context.Background()).Session(&gorm.Session{NewDB: true, SkipHooks: true})
+					fresh.Error = nil
+					fresh.RowsAffected = 0
+					loadErr := fresh.First(current).Error
+					if loadErr != nil {
+						_ = db.AddError(loadErr)
+						return
+					}
+					reflect.Indirect(reflect.ValueOf(stmt.Model)).Set(reflect.Indirect(reflect.ValueOf(current)))
+				}
 			}
 		})
 

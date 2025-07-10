@@ -287,7 +287,7 @@ func (v VersionUpdateClause) ModifyStatement(stmt *gorm.Statement) {
 	wheresClause, hasCustomWhere := stmt.Clauses[clause.Where{}.Name()]
 	if !hasCustomWhere || isTargetedModelUpdate(stmt) {
 		// 1) pull out any existing WHERE expressions
-		existingExprs := []clause.Expression{}
+		existingExprs := make([]clause.Expression, 0)
 		if hasCustomWhere {
 			if wh, ok := wheresClause.Expression.(clause.Where); ok {
 				existingExprs = append(existingExprs, wh.Exprs...)
