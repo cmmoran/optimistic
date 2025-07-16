@@ -1,3 +1,12 @@
+# [0.3.0](https://github.com/cmmoran/optimistic/compare/v0.2.3...v0.3.0) (2025-07-16)
+
+
+### Features
+
+* **optimistic:** removed unused `Version` type and related logic ([938e044](https://github.com/cmmoran/optimistic/commit/938e044fbbbccaf897ea50f7dbb016354ed4c1f4))
+
+
+
 ## [0.2.3](https://github.com/cmmoran/optimistic/compare/v0.2.2...v0.2.3) (2025-07-10)
 
 
