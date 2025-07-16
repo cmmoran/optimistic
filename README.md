@@ -87,3 +87,7 @@ Example model:
 ```
 
 This model will be configured with a `Timestamp` flavor of versioning. This means every optimistic lock supported update to the model will set the version to a new `Timestamp`. Your mileage may vary with this particular version type. Different databases have different mappings for `time.Time`. Some are more coarse-grained than others and may not yield desirable optimistic locking results.
+
+### Issues
+
+If you have issues please open a PR
