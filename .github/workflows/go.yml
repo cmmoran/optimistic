@@ -19,13 +19,15 @@ jobs:
       - name: Cache go module
         uses: actions/cache@v4
         with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('go.sum') }}
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('**/go.sum') }}
           restore-keys: |
-            ${{ runner.os }}-go-
+            ${{ runner.os }}-go-cache-
       - name: Get dependencies, run test
         run: |
-          CGO_ENABLED=1 go test ./...
+          databases=sqlite CGO_ENABLED=1 go test ./...
 
   build:
     needs: test

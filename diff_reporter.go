@@ -2,6 +2,7 @@ package optimistic
 
 import (
 	"encoding/json"
+
 	"github.com/google/go-cmp/cmp"
 )
 
