@@ -1,3 +1,12 @@
+## [0.3.1](https://github.com/cmmoran/optimistic/compare/v0.3.0...v0.3.1) (2025-07-16)
+
+
+### Bug Fixes
+
+* **optimistic:** updated docs and updated patch ([24f8e2e](https://github.com/cmmoran/optimistic/commit/24f8e2ebd66dd6d198b87d44db77b1fb2adbc341))
+
+
+
 # [0.3.0](https://github.com/cmmoran/optimistic/compare/v0.2.3...v0.3.0) (2025-07-16)
 
 
@@ -32,15 +41,6 @@
 ### Bug Fixes
 
 * **optimistic:** removed unnecessary log message from afterUpdate function ([a380597](https://github.com/cmmoran/optimistic/commit/a380597a8a9adab42b9eba711df9e84464d0035a))
-
-
-
-# [0.2.0](https://github.com/cmmoran/optimistic/compare/86b6b80795d51cc97a41bd8269e159f2b738e832...v0.2.0) (2024-12-28)
-
-
-### Features
-
-* **initial:** Initial commit ([86b6b80](https://github.com/cmmoran/optimistic/commit/86b6b80795d51cc97a41bd8269e159f2b738e832))
 
 
 
