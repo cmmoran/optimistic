@@ -4,27 +4,31 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Get latest go version
-        id: version
-        run: |
-          echo ::set-output name=go_version::$(curl -s https://raw.githubusercontent.com/actions/go-versions/main/versions-manifest.json | grep -oE '"version": "[0-9]{1}.[0-9]{1,}(.[0-9]{1,})?"' | head -1 | cut -d':' -f2 | sed 's/ //g; s/"//g')
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ steps.version.outputs.go_version }}
-
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
 
-      - name: Cache go module
+      - name: Set up Go from go.mod
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          check-latest: true
+
+      - name: Compute Go cache paths
+        id: goenv
+        shell: bash
+        run: |
+          echo "gomodcache=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+          echo "gocache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Go modules
         uses: actions/cache@v4
         with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: ${{ runner.os }}-go-cache-${{ hashFiles('**/go.sum') }}
+          path: ${{ steps.goenv.outputs.gomodcache }}
+          key: go-mod-${{ runner.os }}-${{ runner.arch }}-go${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
-            ${{ runner.os }}-go-cache-
+            go-mod-${{ runner.os }}-${{ runner.arch }}-go${{ steps.setup-go.outputs.go-version }}-
+            go-mod-${{ runner.os }}-${{ runner.arch }}-
+
       - name: Get dependencies, run test
         run: |
           databases=sqlite CGO_ENABLED=1 go test ./...

@@ -278,6 +278,10 @@ func (p *Plugin) collectAssignments(stmt *gorm.Statement, f *schema.Field, set *
 	}
 	// struct-based updates
 	selectCols, restrict := stmt.SelectAndOmitColumns(false, true)
+	for k, v := range selectCols {
+		k = stmt.DB.NamingStrategy.ColumnName("", k)
+		selectCols[k] = v
+	}
 	for _, sf := range stmt.Schema.Fields {
 		if sf.PrimaryKey || sf.DBName == f.DBName || !sf.Updatable {
 			continue
@@ -384,7 +388,7 @@ func (p *Plugin) injectWhereVersion(
 		val, _ := pf.ValueOf(stmt.Context, stmt.ReflectValue)
 		for _, expr := range existing.Exprs {
 			if eq, ok := expr.(clause.Eq); ok {
-				if name, ok2 := eqColumnName(eq); ok2 && name == pf.DBName {
+				if name, ok2 := eqColumnName(stmt, eq); ok2 && name == pf.DBName {
 					hasPK = true
 					break
 				}
@@ -638,16 +642,16 @@ func isNumericKind(k reflect.Kind) bool {
 	}
 }
 
-func eqColumnName(expr clause.Expression) (string, bool) {
+func eqColumnName(stmt *gorm.Statement, expr clause.Expression) (string, bool) {
 	eq, ok := expr.(clause.Eq)
 	if !ok {
 		return "", false
 	}
 	switch c := eq.Column.(type) {
 	case clause.Column:
-		return c.Name, true
+		return stmt.DB.NamingStrategy.ColumnName("", c.Name), true
 	case string:
-		return c, true
+		return stmt.DB.NamingStrategy.ColumnName("", c), true
 	default:
 		return "", false
 	}

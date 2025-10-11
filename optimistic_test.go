@@ -10,12 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cmmoran/optimistic"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
-
-	"github.com/cmmoran/optimistic"
 )
 
 var (
@@ -381,7 +380,7 @@ func runSuite(testDatabaseName string) func(f *testing.T) {
 				})
 
 				t.Run(fmt.Sprintf("%s-%s", testDatabaseName, "UpdateTimeDirect"), func(t *testing.T) {
-					_ = db.Exec("truncate table \"test_models_time_version\"")
+					_ = db.Exec("truncate table test_models_time_version")
 					m := &TestOracleModelTimeVersion{
 						Description: "boo",
 						StartTime:   db.NowFunc(),
@@ -409,20 +408,20 @@ func runSuite(testDatabaseName string) func(f *testing.T) {
 					require.NoError(t, result.Error)
 					ftime := m.StartTime
 					m = &TestOracleModelTimeVersion{}
-					result = db.Model(m).Where("\"start_time\" = ?", ftime).First(m)
+					result = db.Model(m).Where(`start_time = ?`, ftime).First(m)
 					require.NoError(t, result.Error)
 					require.EqualValues(t, "anotherone", m.Description)
 					require.EqualValues(t, result.RowsAffected, int64(1))
 
 					var multi []*TestOracleModelTimeVersion
-					result = db.Model(m).Find(&multi, "\"start_time\" >= ?", ntime)
+					result = db.Model(m).Find(&multi, `start_time >= ?`, ntime)
 					require.NoError(t, result.Error)
 					require.EqualValues(t, 3, len(multi))
 					require.EqualValues(t, "boo", multi[0].Description)
 					require.EqualValues(t, "thisone", multi[1].Description)
 					require.EqualValues(t, "anotherone", multi[2].Description)
 
-					result = db.Model(&TestOracleModelTimeVersion{}).Where("\"start_time\" < ?", nntime).Update("start_time", time.Now())
+					result = db.Model(&TestOracleModelTimeVersion{}).Where(`start_time < ?`, nntime).Update("start_time", time.Now())
 					require.NoError(t, result.Error)
 					require.EqualValues(t, 1, result.RowsAffected)
 				})
@@ -468,7 +467,7 @@ func runSuite(testDatabaseName string) func(f *testing.T) {
 				})
 
 				t.Run(fmt.Sprintf("%s-%s", testDatabaseName, "UpdateTimeDirect"), func(t *testing.T) {
-					_ = db.Exec("truncate table \"test_models_time_version\"")
+					_ = db.Exec("truncate table test_models_time_version")
 					m := &TestPostgresModelTimeVersion{
 						Description: "boo",
 						StartTime:   db.NowFunc(),
@@ -496,19 +495,19 @@ func runSuite(testDatabaseName string) func(f *testing.T) {
 					require.NoError(t, result.Error)
 					ftime := m.StartTime
 					m = &TestPostgresModelTimeVersion{}
-					result = db.Model(m).Where("\"start_time\" = ?", ftime).Find(m)
+					result = db.Model(m).Where("start_time = ?", ftime).Find(m)
 					require.NoError(t, result.Error)
 					require.EqualValues(t, "anotherone", m.Description)
 
 					var multi []*TestPostgresModelTimeVersion
-					result = db.Model(m).Find(&multi, "\"start_time\" >= ?", ntime.Truncate(time.Microsecond))
+					result = db.Model(m).Find(&multi, "start_time >= ?", ntime.Truncate(time.Microsecond))
 					require.NoError(t, result.Error)
 					require.EqualValues(t, 3, len(multi))
 					require.EqualValues(t, "boo", multi[0].Description)
 					require.EqualValues(t, "thisone", multi[1].Description)
 					require.EqualValues(t, "anotherone", multi[2].Description)
 
-					result = db.Model(&TestPostgresModelTimeVersion{}).Where("\"start_time\" < ?", nntime).Update("start_time", time.Now())
+					result = db.Model(&TestPostgresModelTimeVersion{}).Where("start_time < ?", nntime).Update("start_time", time.Now())
 					require.NoError(t, result.Error)
 					require.EqualValues(t, 1, result.RowsAffected)
 				})
@@ -577,12 +576,12 @@ func runSuite(testDatabaseName string) func(f *testing.T) {
 					require.NoError(t, result.Error)
 					m.StartTime = time.Now()
 					m = &TestModelTimeVersion{}
-					result = db.Model(m).Find(m, "\"start_time\" = ?", ntime)
+					result = db.Model(m).Find(m, "start_time = ?", ntime)
 					require.NoError(t, result.Error)
 					require.EqualValues(t, "boo", m.Description)
 
 					var multi []*TestModelTimeVersion
-					result = db.Model(m).Find(&multi, "\"start_time\" >= ?", ntime)
+					result = db.Model(m).Find(&multi, "start_time >= ?", ntime)
 					require.NoError(t, result.Error)
 					require.EqualValues(t, 3, len(multi))
 					require.EqualValues(t, "boo", multi[0].Description)
@@ -702,7 +701,8 @@ func runSuite(testDatabaseName string) func(f *testing.T) {
 
 				m.Description = ""
 				m.Enabled = false
-				require.NoError(t, db.Select("description", "enabled").Updates(m).Error)
+				require.NoError(t, db.Model(m).Select("description", "enabled").Updates(m).Error)
+				require.NoError(t, db.Find(m).Error)
 				require.EqualValues(t, 2, m.Version)
 			})
 
