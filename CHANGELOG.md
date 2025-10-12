@@ -1,3 +1,12 @@
+## [0.3.3](https://github.com/cmmoran/optimistic/compare/v0.3.2...v0.3.3) (2025-10-12)
+
+
+### Bug Fixes
+
+* **gorm-oracle:** bumped gorm-oracle version to enhance case-sensitivity handling ([84455f6](https://github.com/cmmoran/optimistic/commit/84455f671b720b2de39ed4d0c6078ead2f9262f0))
+
+
+
 ## [0.3.2](https://github.com/cmmoran/optimistic/compare/v0.3.1...v0.3.2) (2025-10-11)
 
 
@@ -32,15 +41,6 @@
 
 * **mysql:** added mysql support ([c741303](https://github.com/cmmoran/optimistic/commit/c741303afe41af2a5b7a84f2e91094b4345a6c96))
 * **optimistic:** update versioning logic and clean up unused code ([70ccde4](https://github.com/cmmoran/optimistic/commit/70ccde44d420824fa5b9f2b7c56d89e28d41f62e))
-
-
-
-## [0.2.2](https://github.com/cmmoran/optimistic/compare/v0.2.1...v0.2.2) (2025-01-31)
-
-
-### Bug Fixes
-
-* **optimistic:** silenced spammy "differences detected" logging behind slog.Level = -8 ([1c7f398](https://github.com/cmmoran/optimistic/commit/1c7f398dc210d7629d615ec3a0f850dff074bae5))
 
 
 
