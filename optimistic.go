@@ -265,7 +265,7 @@ func (p *Plugin) collectAssignments(stmt *gorm.Statement, f *schema.Field, set *
 	// map-based updates
 	if m, ok := stmt.Dest.(map[string]interface{}); ok {
 		for col, val := range m {
-			name := stmt.DB.NamingStrategy.ColumnName("", col)
+			name := stmt.NamingStrategy.ColumnName("", col)
 			if name == f.DBName {
 				continue
 			}
@@ -279,14 +279,15 @@ func (p *Plugin) collectAssignments(stmt *gorm.Statement, f *schema.Field, set *
 	// struct-based updates
 	selectCols, restrict := stmt.SelectAndOmitColumns(false, true)
 	for k, v := range selectCols {
-		k = stmt.DB.NamingStrategy.ColumnName("", k)
+		k = stmt.NamingStrategy.ColumnName("", k)
 		selectCols[k] = v
 	}
 	for _, sf := range stmt.Schema.Fields {
-		if sf.PrimaryKey || sf.DBName == f.DBName || !sf.Updatable {
+		name := stmt.NamingStrategy.ColumnName("", sf.DBName)
+		if sf.PrimaryKey || name == f.DBName || !sf.Updatable {
 			continue
 		}
-		sel := selectCols[sf.DBName]
+		sel := selectCols[name]
 		if restrict {
 			if !sel {
 				continue
@@ -314,12 +315,14 @@ func (p *Plugin) bumpVersion(
 		return
 	}
 	ft := f.StructField.Type
-	col := clause.Column{Name: f.DBName}
+	name := stmt.NamingStrategy.ColumnName("", f.DBName)
+
+	col := clause.Column{Name: name}
 
 	var val any
 	switch {
 	case isNumericKind(ft.Kind()):
-		val = clause.Expr{SQL: stmt.Quote(f.DBName) + " + 1"}
+		val = clause.Expr{SQL: "? + 1", Vars: []any{col}}
 	case ty16Byte.AssignableTo(ft):
 		if p.paramIs(f, "ulid") || strings.Contains(strings.ToLower(f.FieldType.Name()), "ulid") {
 			val = ulid.MustNew(ulid.Timestamp(stmt.DB.NowFunc()), ulidEntropy)
@@ -388,7 +391,8 @@ func (p *Plugin) injectWhereVersion(
 		val, _ := pf.ValueOf(stmt.Context, stmt.ReflectValue)
 		for _, expr := range existing.Exprs {
 			if eq, ok := expr.(clause.Eq); ok {
-				if name, ok2 := eqColumnName(stmt, eq); ok2 && name == pf.DBName {
+				pfName := stmt.NamingStrategy.ColumnName("", pf.DBName)
+				if name, ok2 := eqColumnName(stmt, eq); ok2 && name == pfName {
 					hasPK = true
 					break
 				}
@@ -649,9 +653,9 @@ func eqColumnName(stmt *gorm.Statement, expr clause.Expression) (string, bool) {
 	}
 	switch c := eq.Column.(type) {
 	case clause.Column:
-		return stmt.DB.NamingStrategy.ColumnName("", c.Name), true
+		return stmt.NamingStrategy.ColumnName("", c.Name), true
 	case string:
-		return stmt.DB.NamingStrategy.ColumnName("", c), true
+		return stmt.NamingStrategy.ColumnName("", c), true
 	default:
 		return "", false
 	}

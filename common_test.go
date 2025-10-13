@@ -62,6 +62,19 @@ func (TestModel) TableName() string {
 	return "test_models"
 }
 
+type TestModelWithTime struct {
+	ID          uint64    `gorm:"<-:create;autoIncrement;primaryKey"`
+	Activation  time.Time `gorm:"autoUpdateTime"`
+	Description string    `gorm:"type:text;"`
+	Code        uint64    `gorm:"type:numeric;"`
+	Enabled     bool      `gorm:"type:bool;"`
+	Version     uint64    `gorm:"type:numeric;not null;version"`
+}
+
+func (TestModelWithTime) TableName() string {
+	return "test_models_with_time"
+}
+
 type TestModelNoVersion struct {
 	ID          uint64 `gorm:"<-:create;primaryKey"`
 	Description string `gorm:"type:text;"`
@@ -175,6 +188,7 @@ func (TestPostgresModelTimeVersion) TableName() string {
 
 var baseTestModels = []interface{}{
 	&TestModel{},
+	&TestModelWithTime{},
 	&TestModelPtr{},
 	&TestModelNoVersion{},
 	&TestModelUUIDVersion{},
@@ -186,6 +200,7 @@ var testModels = map[string][]interface{}{
 	"sqlite": baseTestModels,
 	"mysql": {
 		&TestModel{},
+		&TestModelWithTime{},
 		&TestModelPtr{},
 		&TestModelNoVersion{},
 		&TestModelUUIDVersion{},
@@ -194,6 +209,7 @@ var testModels = map[string][]interface{}{
 	},
 	"oracle": {
 		&TestModel{},
+		&TestModelWithTime{},
 		&TestModelPtr{},
 		&TestModelNoVersion{},
 		&TestOracleModelUUIDVersion{},
@@ -202,6 +218,7 @@ var testModels = map[string][]interface{}{
 	},
 	"postgres": {
 		&TestModel{},
+		&TestModelWithTime{},
 		&TestModelPtr{},
 		&TestModelNoVersion{},
 		&TestModelUUIDVersion{},
@@ -313,6 +330,7 @@ func startMysqlDatabase(t testingT) context.Context {
 	dbName := os.Getenv("MYSQL_DB")
 	dbUser := os.Getenv("MYSQL_USER")
 	dbPass := os.Getenv("MYSQL_PASS")
+	dbHost := os.Getenv("OVERRIDE_HOST")
 	if _, ok := os.LookupEnv("MYSQL_SKIP_CONTAINER"); !ok {
 		container, cerr := mysql.Run(ctx,
 			"mysql:8.0.42",
@@ -322,12 +340,17 @@ func startMysqlDatabase(t testingT) context.Context {
 		)
 		require.NoError(t, cerr, "failed to start mysql container")
 		dsn, derr := container.ConnectionString(ctx, "charset=utf8mb4", "parseTime=true", "loc=Local")
+		if mysqlHost, mysqlHostErr := container.Host(ctx); mysqlHostErr == nil && mysqlHost == "localhost" {
+			if len(dbHost) > 0 {
+				dsn = strings.ReplaceAll(dsn, "localhost", dbHost)
+			}
+		}
 		require.NoError(t, derr, "failed to get connection string")
 		ctx = context.WithValue(ctx, "dsn", dsn)
 		ctx = context.WithValue(ctx, "db", container)
 		testDbContexts[testMysql] = ctx
 	} else {
-		dbHost := os.Getenv("MYSQL_HOST")
+		dbHost = os.Getenv("MYSQL_HOST")
 		if dbHost == "" {
 			dbHost = "127.0.0.1"
 		}
@@ -406,6 +429,7 @@ func startPostgresDatabase(t testingT) context.Context {
 	dbUser := os.Getenv("POSTGRES_USER")
 	dbPass := os.Getenv("POSTGRES_PASS")
 	dbDriver := os.Getenv("POSTGRES_DRIVER")
+	dbHost := os.Getenv("OVERRIDE_HOST")
 	if _, ok := os.LookupEnv("POSTGRES_SKIP_CONTAINER"); !ok {
 		pgContainer, pgerr := postgres.Run(
 			ctx,
@@ -419,12 +443,17 @@ func startPostgresDatabase(t testingT) context.Context {
 		require.NoError(t, pgerr, "failed to startup postgres database")
 
 		dsn, err = pgContainer.ConnectionString(ctx)
+		if pgHost, pgHostOk := pgContainer.Host(ctx); pgHostOk == nil && pgHost == "localhost" {
+			if len(dbHost) > 0 {
+				dsn = strings.ReplaceAll(dsn, "localhost", dbHost)
+			}
+		}
 		require.NoError(t, err, "failed to get connection string")
 		ctx = context.WithValue(ctx, "dsn", dsn)
 		ctx = context.WithValue(ctx, "db", pgContainer)
 		testDbContexts[testPostgres] = ctx
 	} else {
-		dbHost := os.Getenv("POSTGRES_HOST")
+		dbHost = os.Getenv("POSTGRES_HOST")
 		if dbHost == "" {
 			dbHost = "127.0.0.1"
 		}
@@ -536,6 +565,9 @@ func startOracleDatabase(t testingT) context.Context {
 		)
 		host, err = oraContainer.Host(ctx)
 		require.NoError(t, err, "Failed to get container host")
+		if envHost, envHostOk := os.LookupEnv("OVERRIDE_HOST"); envHostOk && host == "localhost" && len(envHost) > 0 {
+			host = envHost
+		}
 
 		port, err = oraContainer.MappedPort(ctx, "1521")
 		require.NoError(t, err, "Failed to get mapped port")

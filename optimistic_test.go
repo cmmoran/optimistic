@@ -10,11 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cmmoran/optimistic"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
+
+	"github.com/cmmoran/optimistic"
 )
 
 var (
@@ -633,6 +634,15 @@ func runSuite(testDatabaseName string) func(f *testing.T) {
 				require.NoError(t, db.Create(m).Error)
 
 				m.Description = "bar"
+				require.NoError(t, db.Updates(m).Error)
+				require.EqualValues(t, 2, m.Version)
+			})
+			// Update increments version
+			t.Run(fmt.Sprintf("%s-%s", testDatabaseName, "UpdateTimeIncrementsVersion"), func(t *testing.T) {
+				m := &TestModelWithTime{Description: "foo"}
+				require.NoError(t, db.Create(m).Error)
+
+				m.Activation = time.Now().UTC()
 				require.NoError(t, db.Updates(m).Error)
 				require.EqualValues(t, 2, m.Version)
 			})
