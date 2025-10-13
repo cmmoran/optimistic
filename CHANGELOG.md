@@ -1,3 +1,12 @@
+## [0.3.4](https://github.com/cmmoran/optimistic/compare/v0.3.3...v0.3.4) (2025-10-13)
+
+
+### Bug Fixes
+
+* **optimistic:** optimistic locking checks need to take into account specific dialector naming strategies ([156a6c8](https://github.com/cmmoran/optimistic/commit/156a6c87619cc46d3e87e74892f5decf48633e61))
+
+
+
 ## [0.3.3](https://github.com/cmmoran/optimistic/compare/v0.3.2...v0.3.3) (2025-10-12)
 
 
@@ -31,16 +40,6 @@
 ### Features
 
 * **optimistic:** removed unused `Version` type and related logic ([938e044](https://github.com/cmmoran/optimistic/commit/938e044fbbbccaf897ea50f7dbb016354ed4c1f4))
-
-
-
-## [0.2.3](https://github.com/cmmoran/optimistic/compare/v0.2.2...v0.2.3) (2025-07-10)
-
-
-### Bug Fixes
-
-* **mysql:** added mysql support ([c741303](https://github.com/cmmoran/optimistic/commit/c741303afe41af2a5b7a84f2e91094b4345a6c96))
-* **optimistic:** update versioning logic and clean up unused code ([70ccde4](https://github.com/cmmoran/optimistic/commit/70ccde44d420824fa5b9f2b7c56d89e28d41f62e))
 
 
 
