@@ -283,6 +283,9 @@ func (p *Plugin) collectAssignments(stmt *gorm.Statement, f *schema.Field, set *
 		selectCols[k] = v
 	}
 	for _, sf := range stmt.Schema.Fields {
+		if sf == nil || len(sf.DBName) == 0 || !sf.Updatable {
+			continue
+		}
 		name := stmt.NamingStrategy.ColumnName("", sf.DBName)
 		if sf.PrimaryKey || name == f.DBName || !sf.Updatable {
 			continue
