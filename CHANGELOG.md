@@ -1,3 +1,12 @@
+## [0.3.5](https://github.com/cmmoran/optimistic/compare/v0.3.4...v0.3.5) (2025-10-28)
+
+
+### Bug Fixes
+
+* **optimistic:** collectAssignments should not include non-updatable fields ([7e4e266](https://github.com/cmmoran/optimistic/commit/7e4e266701b28227c6290420d6e0f8fbac74f217))
+
+
+
 ## [0.3.4](https://github.com/cmmoran/optimistic/compare/v0.3.3...v0.3.4) (2025-10-13)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **optimistic:** updated docs and updated patch ([24f8e2e](https://github.com/cmmoran/optimistic/commit/24f8e2ebd66dd6d198b87d44db77b1fb2adbc341))
-
-
-
-# [0.3.0](https://github.com/cmmoran/optimistic/compare/v0.2.3...v0.3.0) (2025-07-16)
-
-
-### Features
-
-* **optimistic:** removed unused `Version` type and related logic ([938e044](https://github.com/cmmoran/optimistic/commit/938e044fbbbccaf897ea50f7dbb016354ed4c1f4))
 
 
 
