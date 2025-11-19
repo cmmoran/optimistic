@@ -269,10 +269,15 @@ func (p *Plugin) collectAssignments(stmt *gorm.Statement, f *schema.Field, set *
 			if name == f.DBName {
 				continue
 			}
-			*set = append(*set, clause.Assignment{
-				Column: clause.Column{Name: name},
-				Value:  val,
-			})
+			if sf := stmt.Schema.LookUpField(name); sf != nil {
+				if len(sf.DBName) == 0 || !sf.Updatable {
+					continue
+				}
+				*set = append(*set, clause.Assignment{
+					Column: clause.Column{Name: name},
+					Value:  val,
+				})
+			}
 		}
 		return
 	}

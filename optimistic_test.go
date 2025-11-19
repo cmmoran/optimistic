@@ -661,6 +661,7 @@ func runSuite(testDatabaseName string) func(f *testing.T) {
 			t.Run(fmt.Sprintf("%s-%s", testDatabaseName, "SingleColumnUpdate"), func(t *testing.T) {
 				m := &TestModel{Description: "foo"}
 				require.NoError(t, db.Create(m).Error)
+				require.EqualValues(t, 1, m.Version)
 
 				require.NoError(t, db.Model(m).Update("description", "qux").Error)
 				require.EqualValues(t, 2, m.Version)
