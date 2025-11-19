@@ -1,3 +1,12 @@
+## [0.3.6](https://github.com/cmmoran/optimistic/compare/v0.3.5...v0.3.6) (2025-11-19)
+
+
+### Bug Fixes
+
+* **optimistic:** ensure collectAssignments excludes non-updatable schema fields and add versioning test updates ([745d791](https://github.com/cmmoran/optimistic/commit/745d7916b6e944f2740ed9eb8e57a02cfc7b6ff0))
+
+
+
 ## [0.3.5](https://github.com/cmmoran/optimistic/compare/v0.3.4...v0.3.5) (2025-10-28)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **optimistic:** attempting improve accuracy by using the configured naming strategy on the gorm.DB instance ([31a0ce9](https://github.com/cmmoran/optimistic/commit/31a0ce9edb28b2e5b3c9f4405860d64fa9b638ee))
-
-
-
-## [0.3.1](https://github.com/cmmoran/optimistic/compare/v0.3.0...v0.3.1) (2025-07-16)
-
-
-### Bug Fixes
-
-* **optimistic:** updated docs and updated patch ([24f8e2e](https://github.com/cmmoran/optimistic/commit/24f8e2ebd66dd6d198b87d44db77b1fb2adbc341))
 
 
 
