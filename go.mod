@@ -5,7 +5,7 @@ go 1.24.8
 //replace github.com/sijms/go-ora/v2 => github.com/cmmoran/go-ora/v2 v2.0.0-20250926150009-a7656b5212f0
 
 require (
-	github.com/cmmoran/gorm-oracle v0.4.1
+	github.com/cmmoran/gorm-oracle v0.5.0
 	github.com/docker/go-connections v0.6.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0

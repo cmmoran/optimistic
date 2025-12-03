@@ -12,8 +12,8 @@ github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK3
 github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/cmmoran/go-ora/v2 v2.9.5 h1:3DQ//xBHbWhDpdjoiRAo52vMV3psViKb55fdBEDI6rc=
 github.com/cmmoran/go-ora/v2 v2.9.5/go.mod h1:21++MF1u1aESjsQBW3upSuRh8BdUKjfbNnMuDRgfKsg=
-github.com/cmmoran/gorm-oracle v0.4.1 h1:hTDRjGeRK12L4iEIBc/yH/GuaBCjOkUsHyIHLv7TXI4=
-github.com/cmmoran/gorm-oracle v0.4.1/go.mod h1:NSTVmyhZL8y4pV0u3jWTLBsHtCEAgkPulWKgGilWgcM=
+github.com/cmmoran/gorm-oracle v0.5.0 h1:Ff4NVtR+LHedPd/HoyOkwVTYFt8IGLOmXUbXg/o+GgY=
+github.com/cmmoran/gorm-oracle v0.5.0/go.mod h1:NSTVmyhZL8y4pV0u3jWTLBsHtCEAgkPulWKgGilWgcM=
 github.com/containerd/errdefs v1.0.0 h1:tg5yIfIlQIrxYtu9ajqY42W3lpS19XqdxRQeEwYG8PI=
 github.com/containerd/errdefs v1.0.0/go.mod h1:+YBYIdtsnF4Iw6nWZhJcqGSg/dwvV7tyJ/kCkyJ2k+M=
 github.com/containerd/errdefs/pkg v0.3.0 h1:9IKJ06FvyNlexW690DXuQNx2KA2cUJXx151Xdx3ZPPE=
