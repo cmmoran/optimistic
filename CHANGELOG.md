@@ -1,3 +1,12 @@
+## [0.3.8](https://github.com/cmmoran/optimistic/compare/v0.3.7...v0.3.8) (2025-12-03)
+
+
+### Bug Fixes
+
+* bump gorm-oracle to v0.5.0 for compatibility and enhancements ([fd65dfd](https://github.com/cmmoran/optimistic/commit/fd65dfd2ce8e5681d3db32b27d70a16ef72e6408))
+
+
+
 ## [0.3.7](https://github.com/cmmoran/optimistic/compare/v0.3.6...v0.3.7) (2025-11-20)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **optimistic:** optimistic locking checks need to take into account specific dialector naming strategies ([156a6c8](https://github.com/cmmoran/optimistic/commit/156a6c87619cc46d3e87e74892f5decf48633e61))
-
-
-
-## [0.3.3](https://github.com/cmmoran/optimistic/compare/v0.3.2...v0.3.3) (2025-10-12)
-
-
-### Bug Fixes
-
-* **gorm-oracle:** bumped gorm-oracle version to enhance case-sensitivity handling ([84455f6](https://github.com/cmmoran/optimistic/commit/84455f671b720b2de39ed4d0c6078ead2f9262f0))
 
 
 
