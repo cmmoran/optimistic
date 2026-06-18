@@ -1,3 +1,12 @@
+## [0.3.9](https://github.com/cmmoran/optimistic/compare/v0.3.8...v0.3.9) (2026-06-18)
+
+
+### Bug Fixes
+
+* **deps:** update oracle dependencies ([59771ce](https://github.com/cmmoran/optimistic/commit/59771ce8a1bb5fe9524d237053f0012a02222b02))
+
+
+
 ## [0.3.8](https://github.com/cmmoran/optimistic/compare/v0.3.7...v0.3.8) (2025-12-03)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **optimistic:** collectAssignments should not include non-updatable fields ([7e4e266](https://github.com/cmmoran/optimistic/commit/7e4e266701b28227c6290420d6e0f8fbac74f217))
-
-
-
-## [0.3.4](https://github.com/cmmoran/optimistic/compare/v0.3.3...v0.3.4) (2025-10-13)
-
-
-### Bug Fixes
-
-* **optimistic:** optimistic locking checks need to take into account specific dialector naming strategies ([156a6c8](https://github.com/cmmoran/optimistic/commit/156a6c87619cc46d3e87e74892f5decf48633e61))
 
 
 
